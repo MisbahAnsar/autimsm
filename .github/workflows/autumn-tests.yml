@@ -75,7 +75,7 @@ jobs:
       working-directory: server
       env:
         # Database and Redis configuration
-        DATABASE_URL: postgresql://${{ secrets.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/autumn
+        DATABASE_URL: postgresql://${{ secrets.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@aws-0-us-east-2.pooler.supabase.com:5432/postgres
         # REDIS_URL: redis://localhost:6379
         # Stripe test API keys
         STRIPE_SECRET_KEY: ${{ secrets.STRIPE_TEST_SECRET_KEY }}
