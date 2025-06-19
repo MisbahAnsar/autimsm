@@ -58,9 +58,10 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - ./server:/app/server
+      - ./server:/app/server:cached
       - shared-dist:/app/shared/dist
       - root-node-modules:/app/node_modules
+      - /app/server/node_modules  # Anonymous volume to preserve container's node_modules
     environment:
       - NODE_ENV=development
       - REDIS_URL=redis://valkey:6379
@@ -68,17 +69,16 @@ services:
       - shared
     restart: unless-stopped
 
-  # BullMQ Workers
   workers:
     build:
       dockerfile: docker/dev.dockerfile
       context: .
       target: workers
     volumes:
-      # Mount server source for hot reload (workers use server code)
-      - ./server:/app/server
+      - ./server:/app/server:cached
       - shared-dist:/app/shared/dist
       - root-node-modules:/app/node_modules
+      - /app/server/node_modules  # Anonymous volume to preserve container's node_modules
     environment:
       - NODE_ENV=development
       - REDIS_URL=redis://valkey:6379

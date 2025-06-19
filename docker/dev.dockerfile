@@ -13,7 +13,7 @@ COPY server/package*.json ./server/
 COPY vite/package*.json ./vite/
 
 RUN pnpm install
-RUN npm install -g nodemon tsx
+# RUN npm install -g nodemon tsx
 
 # Stage 1: /localtunnel
 FROM base AS localtunnel
