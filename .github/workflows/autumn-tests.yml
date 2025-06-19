@@ -74,7 +74,7 @@ jobs:
         ENCRYPTION_PASSWORD: ${{ secrets.ENCRYPTION_PASSWORD || 'test_encryption_password_for_ci_testing' }}
         # Other environment variables
         NODE_ENV: test
-        CLIENT_URL: http://localhost:3000
+        CLIENT_URL: https://useautumn.com/
       run: |
         case ${{ matrix.test-group }} in
           1) ./shell/g1.sh ;;
