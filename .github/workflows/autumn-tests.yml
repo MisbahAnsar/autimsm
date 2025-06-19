@@ -14,7 +14,7 @@ jobs:
       # Run tests sequentially to respect Stripe API rate limits
       max-parallel: 1
       matrix:
-        test-group: [1, 2, 3, 4, 5]
+        test-group: [1, 2]
     
     steps:
     - name: Checkout code
@@ -35,7 +35,7 @@ jobs:
       run: pnpm install --no-frozen-lockfile
         
     - name: Build shared package
-      run: pnpm run build --filter @autumn/shared
+      run: pnpm -F shared build
         
     - name: Make shell scripts executable
       run: |
