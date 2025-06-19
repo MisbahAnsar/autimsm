@@ -9,14 +9,15 @@ on:
 jobs:
   autumn-tests:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     
     services:
       postgres:
         image: postgres:15-alpine
         env:
-          POSTGRES_DB: postgresql://
-          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
-          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_DB: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
         ports:
           - 5432:5432
         options: >-
@@ -24,22 +25,12 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-          
-      # redis:
-      #   image: redis:7-alpine
-      #   ports:
-      #     - 6379:6379
-      #   options: >-
-      #     --health-cmd "redis-cli ping"
-      #     --health-interval 10s
-      #     --health-timeout 5s
-      #     --health-retries 5
     
     strategy:
       # Run tests sequentially to respect Stripe API rate limits
       max-parallel: 1
       matrix:
-        test-group: [1, 2]
+        test-group: [1, 2, 3, 4, 5]
     
     steps:
     - name: Checkout code
@@ -73,30 +64,54 @@ jobs:
         
     - name: Run test group ${{ matrix.test-group }}
       working-directory: server
+      timeout-minutes: 20
       env:
-        # Database and Redis configuration
-        DATABASE_URL: postgresql://${{ secrets.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@aws-0-us-east-2.pooler.supabase.com:5432/postgres
-        # REDIS_URL: redis://localhost:6379
+        # Database configuration - using local postgres service
+        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
         # Stripe test API keys
         STRIPE_SECRET_KEY: ${{ secrets.STRIPE_TEST_SECRET_KEY }}
         STRIPE_PUBLISHABLE_KEY: ${{ secrets.STRIPE_TEST_PUBLISHABLE_KEY }}
-        # Required auth environment variables (using dummy values for tests)
+        # Auth environment variables
         BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
         BETTER_AUTH_URL: http://localhost:8080
-        # Required encryption variables (using dummy values for tests)  
-        ENCRYPTION_IV: 1234567890123456
-        ENCRYPTION_PASSWORD: test_encryption_password_for_ci
+        # Encryption variables - fix the IV format
+        ENCRYPTION_IV: ${{ secrets.ENCRYPTION_IV || '1234567890123456' }}
+        ENCRYPTION_PASSWORD: ${{ secrets.ENCRYPTION_PASSWORD || 'test_encryption_password_for_ci' }}
         # Other environment variables
         NODE_ENV: test
         CLIENT_URL: http://localhost:3000
+        # Add any missing API keys or tokens your tests need
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        # Add other secrets as needed
       run: |
+        # Add error handling and logging
+        set -e
+        echo "Running test group ${{ matrix.test-group }}..."
+        
         case ${{ matrix.test-group }} in
-          1) ./shell/g1.sh ;;
-          2) ./shell/g2.sh ;;
-          3) ./shell/g3.sh ;;
-          4) ./shell/g4.sh ;;
-          5) ./shell/g5.sh ;;
+          1) 
+            echo "Executing g1.sh..."
+            ./shell/g1.sh
+            ;;
+          2) 
+            echo "Executing g2.sh..."
+            ./shell/g2.sh
+            ;;
+          3) 
+            echo "Executing g3.sh..."
+            ./shell/g3.sh
+            ;;
+          4) 
+            echo "Executing g4.sh..."
+            ./shell/g4.sh
+            ;;
+          5) 
+            echo "Executing g5.sh..."
+            ./shell/g5.sh
+            ;;
         esac
+        
+        echo "Test group ${{ matrix.test-group }} completed successfully!"
         
     # Optional: Add delay between test groups to further respect rate limits
     - name: Wait between test groups
