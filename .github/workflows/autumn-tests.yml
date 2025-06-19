@@ -48,10 +48,11 @@ jobs:
     - name: Build shared package
       run: pnpm -F shared build
 
-      - name: Run DB migrations
+    - name: Run DB migrations
       working-directory: server
+      env:
+        DATABASE_URL: ${{ secrets.DATABASE_URL }}
       run: pnpm db:migrate
-
         
     - name: Make shell scripts executable
       run: |
