@@ -47,6 +47,11 @@ jobs:
         
     - name: Build shared package
       run: pnpm -F shared build
+
+      - name: Run DB migrations
+      working-directory: server
+      run: pnpm db:migrate
+
         
     - name: Make shell scripts executable
       run: |
