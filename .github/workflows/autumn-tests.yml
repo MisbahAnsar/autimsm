@@ -31,9 +31,12 @@ jobs:
         node-version: '18'
         cache: 'pnpm'
         
-    - name: Install dependencies
+        - name: Install dependencies
       run: pnpm install --no-frozen-lockfile
-      
+        
+    - name: Build shared package
+      run: pnpm run build --filter @autumn/shared
+        
     - name: Make shell scripts executable
       run: |
         chmod +x server/shell/g1.sh
