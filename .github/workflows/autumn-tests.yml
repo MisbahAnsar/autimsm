@@ -10,6 +10,31 @@ jobs:
   autumn-tests:
     runs-on: ubuntu-latest
     
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_DB: postgresql://
+          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+          
+      # redis:
+      #   image: redis:7-alpine
+      #   ports:
+      #     - 6379:6379
+      #   options: >-
+      #     --health-cmd "redis-cli ping"
+      #     --health-interval 10s
+      #     --health-timeout 5s
+      #     --health-retries 5
+    
     strategy:
       # Run tests sequentially to respect Stripe API rate limits
       max-parallel: 1
@@ -49,11 +74,21 @@ jobs:
     - name: Run test group ${{ matrix.test-group }}
       working-directory: server
       env:
-        # Add your Stripe test API keys and other required environment variables
+        # Database and Redis configuration
+        DATABASE_URL: postgresql://${{ secrets.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/autumn
+        # REDIS_URL: redis://localhost:6379
+        # Stripe test API keys
         STRIPE_SECRET_KEY: ${{ secrets.STRIPE_TEST_SECRET_KEY }}
         STRIPE_PUBLISHABLE_KEY: ${{ secrets.STRIPE_TEST_PUBLISHABLE_KEY }}
-        # Add other environment variables your tests need
+        # Required auth environment variables (using dummy values for tests)
+        BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
+        BETTER_AUTH_URL: http://localhost:8080
+        # Required encryption variables (using dummy values for tests)  
+        ENCRYPTION_IV: 1234567890123456
+        ENCRYPTION_PASSWORD: test_encryption_password_for_ci
+        # Other environment variables
         NODE_ENV: test
+        CLIENT_URL: http://localhost:3000
       run: |
         case ${{ matrix.test-group }} in
           1) ./shell/g1.sh ;;
