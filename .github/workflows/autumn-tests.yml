@@ -1,0 +1,111 @@
+name: Autumn Tests CI/CD
+
+on:
+  pull_request:
+    branches: [ main, develop ]
+  push:
+    branches: [ '**' ]
+
+jobs:
+  autumn-tests:
+    runs-on: ubuntu-latest
+    
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    
+    strategy:
+      # Run tests sequentially to respect Stripe API rate limits
+      max-parallel: 1
+      matrix:
+        test-group: [1, 2]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Install pnpm
+      uses: pnpm/action-setup@v2
+      with:
+        version: 8
+        
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'pnpm'
+        
+    - name: Install dependencies
+      run: pnpm install --no-frozen-lockfile
+        
+    - name: Build shared package
+      run: pnpm -F shared build
+
+    - name: Run DB migrations
+      working-directory: server
+      env:
+        DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      run: pnpm db:migrate
+        
+    - name: Make shell scripts executable
+      run: |
+        chmod +x server/shell/g1.sh
+        chmod +x server/shell/g2.sh
+        chmod +x server/shell/g3.sh
+        chmod +x server/shell/g4.sh
+        chmod +x server/shell/g5.sh
+        chmod +x server/shell/config.sh
+        
+    - name: Run test group ${{ matrix.test-group }}
+      working-directory: server
+      env:
+        # Database and Redis configuration
+        DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        REDIS_URL: redis://localhost:6379
+        # Stripe test API keys
+        STRIPE_SECRET_KEY: ${{ secrets.STRIPE_TEST_SECRET_KEY }}
+        STRIPE_PUBLISHABLE_KEY: ${{ secrets.STRIPE_TEST_PUBLISHABLE_KEY }}
+        # Required auth environment variables (with fallbacks for testing)
+        BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET || 'test_secret_key_for_ci_minimum_32_chars_long' }}
+        BETTER_AUTH_URL: ${{ secrets.BETTER_AUTH_URL || 'http://localhost:8080' }}
+        # Required encryption variables (with fallbacks for testing)
+        ENCRYPTION_IV: ${{ secrets.ENCRYPTION_IV || '1234567890123456' }}
+        ENCRYPTION_PASSWORD: ${{ secrets.ENCRYPTION_PASSWORD || 'test_encryption_password_for_ci_testing' }}
+        # Other environment variables
+        NODE_ENV: test
+        CLIENT_URL: https://useautumn.com/
+      run: |
+        case ${{ matrix.test-group }} in
+          1) ./shell/g1.sh ;;
+          2) ./shell/g2.sh ;;
+          3) ./shell/g3.sh ;;
+          4) ./shell/g4.sh ;;
+          5) ./shell/g5.sh ;;
+        esac
+        
+    # Optional: Add delay between test groups to further respect rate limits
+    - name: Wait between test groups
+      if: matrix.test-group != 5
+      run: sleep 30
+
+  # Summary job that depends on all test groups completing successfully
+  test-summary:
+    runs-on: ubuntu-latest
+    needs: autumn-tests
+    if: always()
+    steps:
+    - name: Check test results
+      run: |
+        if [[ "${{ needs.autumn-tests.result }}" == "success" ]]; then
+          echo "✅ All Autumn test groups passed successfully!"
+        else
+          echo "❌ Some Autumn test groups failed"
+          exit 1
+        fi
